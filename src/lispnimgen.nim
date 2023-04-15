@@ -1,28 +1,31 @@
 import lispnim, os, strutils, nuance/tosexp
 
-proc generateFile(path: string) =
+proc toNimFile*(path: string): string =
   let lisp = parseLisp(readFile(path), path)
   let ast = toNim(lisp)
   let sexp = toSexp(ast)
-  let (d, n, _) = splitFile(path)
-  let templ = """import nuance/[fromsexp, comptime]
+  result = """import nuance/[fromsexp, comptime]
 
 load(parseSexp(""" & "\"\"\"" & sexp & "\"\"\"" & "))"
+
+proc generateFile*(path: string) =
+  let (d, n, _) = splitFile(path)
+  let templ = toNimFile(path)
   writeFile(d / n & ".nim", templ)
 
-proc generateFilesInDir(dir: string, ext = ".lispnim") =
+proc generateFilesInDir*(dir: string, ext = ".lispnim") =
   for p in walkDirRec(dir):
     if p.endsWith(ext):
       generateFile(p)
 
-proc commandLine() =
-  let params = commandLineParams()
+proc commandLine*(params: seq[string]) =
   if params.len > 0:
     let a = params[0]
     if fileExists(a): generateFile(a)
     elif dirExists(a): generateFilesInDir(a)
-    else: echo "cannot find path ", a
+    else: raise newException(ValueError, "cannot find path ")
   else:
-    echo "provide a file or directory"
-  
-commandLine()
+    raise newException(ValueError, "provide a file or directory")
+
+when isMainModule and appType == "console":
+  commandLine(commandLineParams())
